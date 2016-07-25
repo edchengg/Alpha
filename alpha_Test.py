@@ -657,7 +657,20 @@ wealth = AAA[0]
 weights = AAA[2]
 time = AAA[3]
 stock_num = AAA[1]
-def plot(time, stock_num, wealth, weights):
+print len(weights)
+#compre it with SP500
+v = 0
+for i in range(0,len(dates)):
+    if dates[i] == '29/03/96':
+        stockval = data[1][i]
+        stockval = float(stockval)
+        v = i
+stocknum = math.floor(100000/stockval)
+sp_wealth = [0]*112
+for i in range(0,112):
+    sp_wealth[i] = float(data[1][v+i])*stocknum
+
+def plot(time, stock_num, wealth, weights,sp_wealth):
  s1 =[]
 
 
@@ -667,7 +680,10 @@ def plot(time, stock_num, wealth, weights):
 
  x = range(len(s1))
  plt.plot(x,wealth)
+ plt.plot(x,sp_wealth)
+ plt.legend(['portfolio','SP500'],loc='upper right',fontsize = 'x-small')
  plt.show()
+
 
 
  w1 =[]
@@ -734,4 +750,7 @@ def plot(time, stock_num, wealth, weights):
  plt.plot(x,w15)
  plt.legend(['SP500','Energy','Precmetandmining','Healthcare','USgrowth','GrowthInt','ValeInt','LtCorpbond','JunkBond','GNMA','STCORPBOND','LTTBOND','PACstock','Eurstock'],loc='upper right',fontsize = 'x-small')
  plt.show()
-ppp = plot(time,stock_num,wealth,weights)
+
+
+ppp = plot(time,stock_num,wealth,weights,sp_wealth)
+
