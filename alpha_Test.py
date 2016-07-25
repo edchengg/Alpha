@@ -145,15 +145,14 @@ def sell_stocks_ini(ETF, date1, mon_left):
 #test = sell_stocks_ini('STW','14/03/12',10)
 #print test
 #(5020.76, 124.0)
-def sell_stocks(ETF, date1, num_to_sell,mon_left):
+def sell_stocks(ETF, date1, num_to_sell,mon_left,ETF_weights):
+    #sell according to weights of ETFs
     cap_added = [0]*len(ETF)
     num_to_sell_new = [0]*len(ETF)
     val_stock = [0]*len(ETF)
     num_to_sell_again = [0] * len(ETF)
-    count1 = 0
-    for i in range(0, len(ETF)):
-        if ETF[i] != '':
-            count1 += 1
+
+
     for m in range(0, len(ETF)):
         for i in range(0, len(colnames)):
             if ETF[m] == colnames[i]:
@@ -167,7 +166,7 @@ def sell_stocks(ETF, date1, num_to_sell,mon_left):
                         #put stock price in the list so we don't have to do the loops again
                         val_stock[m] = val1
                         #If number of stock sold > number of stock holding, we select number of stock we have
-                        num_to_sell_new[m] = min((math.floor((money_buy/count1)/val1) + 1),num_to_sell[m])
+                        num_to_sell_new[m] = min((math.floor((money_buy*ETF_weights[m])/val1) + 1),num_to_sell[m])
                         cap_added[m] = num_to_sell_new[m]*(val1 - bas*val1)*(1-t_c)
     cap_added_tot = 0
     for i in range(0, len(cap_added)):
@@ -199,9 +198,9 @@ def sell_stocks(ETF, date1, num_to_sell,mon_left):
     ret = money_buy
 
     return ret, num_left, money_left
-#test = sell_stocks(['STW','SPDR50','SPDR200','','','','','','','RUSSELCPRTBD'],'14/03/12',[171,5,10,0,0,0,0,0,0,500],100)
+#test = sell_stocks(['SP500','Energy','','','','','','','','','','','','',''],'28/02/91',[9950,500,0,0,0,0,0,0,0,0,0,0,0,0],10,[0.95433,0.045667,0,0,0,0,0,0,0,0,0,0,0,0])
 #print test
-#(5000, [114.0, 0, 0, 0, 0, 0, 0, 0, 0, 384.0], 15.399999999999636)
+#(5000, [9523.0, 478.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 17.172452840000005)
 def sell_stocks_all(ETF, date1, num_to_sell,mon_left,ETF_e):
     cap_added = [0]*len(ETF_e)
     num_to_sell_new = [0]*len(ETF_e)
@@ -480,7 +479,7 @@ def cal_reg_ini(start_date, forward, interval, start_ETF):
 #test = cal_reg_ini('14/03/12', 30,10,'STW')
 #print test
 #(['STW', '', '', '', 'RUSSELHIGHD', '', 'VANGDSHS', '', '', ''], [2304.0, 0, 0, 0, 108.0, 0, 50.0, 0, 0, 0], '10/5/2012', 39.75999999999112, 98737.95999999999, [0.949, 0.0, 0.0, 0.0, 0.025, 0.0, 0.025, 0.0, 0.0, 0.0])
-def cal_reg(date1,forward,interval,ETF,stocks_inhand,money_left):
+def cal_reg(date1,forward,interval,ETF,stocks_inhand,money_left,weights_now):
     v = 0
     for i in range(0, len(dates)):
         if dates[i] == date1:
@@ -516,7 +515,7 @@ def cal_reg(date1,forward,interval,ETF,stocks_inhand,money_left):
         tempy = y_all[i]
         slope, alpha, r_value, p_value, std_err = stats.linregress(xaxis, tempy)
         alpha_val[i] = alpha
-        p_val[i] = p_value
+        p_val[i] = p_value######check
     #print alpha_val
     #print p_val
     #find alpha>0 and p_value < 0.1
@@ -529,7 +528,7 @@ def cal_reg(date1,forward,interval,ETF,stocks_inhand,money_left):
             ETF_buy.append(exc_list[i])
         if alpha_val[i] < -0.01 and p_val[i] < 0.1:
             ETF_sell.append(exc_list[i])
-
+    #print ETF_buy
     #print ETF_sell
     #ETF_sell = ['VTS','STW','SLF']
     #Check if ETF_sell is in the current portfolio
@@ -543,28 +542,24 @@ def cal_reg(date1,forward,interval,ETF,stocks_inhand,money_left):
             if ETF[i] == Sell_port[j]:
                 Sell_port[i] = ETF[i]
 
+    #find ETF weights in current portfolio
+    if Sell_port == ['']*len(exc_list) and ETF_buy != []:
+        y4 = sell_stocks(ETF,date3,stocks_inhand,money_left,weights_now)
+        print y4
+    elif Sell_port != ['']*len(exc_list) and ETF_buy != []:
 
-    if Sell_port == ['']*len(exc_list):
-        #sell existing stocks equally
-        y4 = sell_stocks(ETF,date3,stocks_inhand,money_left)
-
-    else:
-        #if there are ETFs can be sold in my portfolio
-        #perform a test to check whether these ETF can fulfill the requirement of money_buy
         y6 = test_sell(Sell_port,date3,stocks_inhand,money_left)
         if y6 == 1:
-            #sell everything, cannot fulfill
-
             y4 = sell_stocks_all(Sell_port,date3,stocks_inhand,money_left,ETF)
+            print y4
 
         if y6 ==2:
-            #sell everything - can fulfill - so equally sell again the other existing ETFs
-
             y4 = sell_stocks_sell(Sell_port,date3,stocks_inhand,money_left)
-
-    #buy ETFs finally
-    stocks_remain = y4[1]
-    #print stocks_remain
+            print y4
+    if ETF_buy == []:
+        stocks_remain = stocks_inhand
+    else:
+        stocks_remain = y4[1]
 
     y7 = buy_stocks(ETF_buy,date3,money_buy)
     #print y7[0]
@@ -587,7 +582,10 @@ def cal_reg(date1,forward,interval,ETF,stocks_inhand,money_left):
     ETF_num_port = stocks_in_port
     #print ETF_num_port
     #find total wealth and weight
-    total_mon_left = y4[2]+y7[1]
+    if ETF_buy != []:
+        total_mon_left = y4[2]+y7[1]
+    else:
+        total_mon_left = money_left
     twealth = 0
     val = [0]*len(exc_list)
     for k in range(0, len(ETF_in_port)):
@@ -605,20 +603,20 @@ def cal_reg(date1,forward,interval,ETF,stocks_inhand,money_left):
                         #print wealth
                         twealth = twealth + wealth
                         #print twealth
-    twealth = twealth + total_mon_left
+    twealth = twealth + total_mon_left#rf rate
     weight_port = [0]* len(ETF_in_port)
 
     for i in range(0, len(ETF_in_port)):
         weight_port[i] = round(float((val[i]*ETF_num_port[i])/twealth),3)
 
-
-
-
     return ETF_in_port, ETF_num_port, date3, total_mon_left,twealth,weight_port
-#y= cal_reg('11/4/2014',100,10,['STW','SPDR50','SPDR200','','','BETASHARES200','','','','RUSSELCPRTBD'], [2304.0, 150, 200, 0, 0, 500, 0, 0, 0, 30],30)
+#y= cal_reg('28/02/91',60,1,['SP500','Energy','','','','','','','','','','','','',''], [9500,500,0,0,0,0,0,0,0,0,0,0,0,0,0],30,[0.95202,0.047714,0,0,0,0,0,0,0,0,0,0,0,0,0])
 #print y
-#(['STW', '', '', '', '', 'BETASHARES200', '', '', '', ''], [2208.0, 0, 0, 0, 0, 434.0, 0, 0, 0, 0], '28/04/14', 42.51999999999953, 120070.70000000001, [0.958, 0.0, 0.0, 0.0, 0.0, 0.041, 0.0, 0.0, 0.0, 0.0])
+#(['SP500', 'Energy', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+# [9084.0, 477.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], '30/04/91',
+# 47.775877469999614, 109348.115175, [0.953, 0.047, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
+#check 120070 = weights* return price#self financing constraints
 def Alpha(period,start_date,start_ETF,forward,interval):
     wealth = []
     weight1 = []
@@ -631,7 +629,7 @@ def Alpha(period,start_date,start_ETF,forward,interval):
     time.append(y0[2])
     print y0[4]
     print y0[2]
-    y = cal_reg(y0[2],forward,interval,y0[0],y0[1],y0[3])
+    y = cal_reg(y0[2],forward,interval,y0[0],y0[1],y0[3],y0[5])
     wealth.append(math.floor(y[4]))
     weight1.append((y[5]))
     stock_num.append((y[1]))
@@ -639,7 +637,7 @@ def Alpha(period,start_date,start_ETF,forward,interval):
     print y[4]
     print y[2]
     for a in range(0, period):
-       y = cal_reg(y[2],forward, interval, y[0],y[1],y[3])
+       y = cal_reg(y[2],forward, interval, y[0],y[1],y[3],y[5])
        #print 'wealth:'
        print y[4]
        #print 'Date'
@@ -654,60 +652,22 @@ def Alpha(period,start_date,start_ETF,forward,interval):
     return wealth,stock_num,weight1,time
 
 #AAA = Alpha(50,'11/04/2007','SPDR500',500,10)
-AAA = Alpha(30,'31/01/91','SP500',60,1)
+AAA = Alpha(110,'31/01/91','SP500',60,1)
 wealth = AAA[0]
 weights = AAA[2]
 time = AAA[3]
 stock_num = AAA[1]
 def plot(time, stock_num, wealth, weights):
  s1 =[]
- s2 =[]
- s3 =[]
- s4 =[]
- s5 =[]
- s6 =[]
- s7 =[]
- s8 =[]
- s9 =[]
- s10 =[]
+
 
  for i in range(0,len(stock_num)):
      s1.append(stock_num[i][0])
- for i in range(0,len(stock_num)):
-     s2.append(stock_num[i][1])
- for i in range(0,len(stock_num)):
-     s3.append(stock_num[i][2])
- for i in range(0,len(stock_num)):
-     s4.append(stock_num[i][3])
- for i in range(0,len(stock_num)):
-     s5.append(stock_num[i][4])
- for i in range(0,len(stock_num)):
-     s6.append(stock_num[i][5])
- for i in range(0,len(stock_num)):
-     s7.append(stock_num[i][6])
- for i in range(0,len(stock_num)):
-     s8.append(stock_num[i][7])
- for i in range(0,len(stock_num)):
-     s9.append(stock_num[i][8])
- for i in range(0,len(stock_num)):
-     s10.append(stock_num[i][9])
+
 
  x = range(len(s1))
  plt.plot(x,wealth)
  plt.show()
- plt.plot(x,s1)
- plt.plot(x,s2)
- plt.plot(x,s3)
- plt.plot(x,s4)
- plt.plot(x,s5)
- plt.plot(x,s6)
- plt.plot(x,s7)
- plt.plot(x,s8)
- plt.plot(x,s9)
- plt.plot(x,s10)
- plt.legend(['STW','SPDR50','SPDR200','VANGDUS','RUSSELHIGHD','BETASHARES200','VANGDSHS','ISHAREBOND','RUSSELLGVTBD','RUSSELCPRTBD'],loc='upper left',fontsize = 'x-small')
- plt.show()
-
 
 
  w1 =[]
@@ -720,6 +680,11 @@ def plot(time, stock_num, wealth, weights):
  w8 =[]
  w9 =[]
  w10 =[]
+ w11 =[]
+ w12 =[]
+ w13 =[]
+ w14 =[]
+ w15 =[]
 
  for i in range(0,len(weights)):
      w1.append(weights[i][0])
@@ -741,6 +706,16 @@ def plot(time, stock_num, wealth, weights):
      w9.append(weights[i][8])
  for i in range(0,len(weights)):
      w10.append(weights[i][9])
+ for i in range(0,len(weights)):
+     w11.append(weights[i][10])
+ for i in range(0,len(weights)):
+     w12.append(weights[i][11])
+ for i in range(0,len(weights)):
+     w13.append(weights[i][12])
+ for i in range(0,len(weights)):
+     w14.append(weights[i][13])
+ for i in range(0,len(weights)):
+     w15.append(weights[i][14])
 
  plt.plot(x,w1)
  plt.plot(x,w2)
@@ -752,7 +727,11 @@ def plot(time, stock_num, wealth, weights):
  plt.plot(x,w8)
  plt.plot(x,w9)
  plt.plot(x,w10)
- plt.legend(['STW','SPDR50','SPDR200','VANGDUS','RUSSELHIGHD','BETASHARES200','VANGDSHS','ISHAREBOND','RUSSELLGVTBD','RUSSELCPRTBD'],loc='upper right',fontsize = 'x-small')
+ plt.plot(x,w11)
+ plt.plot(x,w12)
+ plt.plot(x,w13)
+ plt.plot(x,w14)
+ plt.plot(x,w15)
+ plt.legend(['SP500','Energy','Precmetandmining','Healthcare','USgrowth','GrowthInt','ValeInt','LtCorpbond','JunkBond','GNMA','STCORPBOND','LTTBOND','PACstock','Eurstock'],loc='upper right',fontsize = 'x-small')
  plt.show()
 ppp = plot(time,stock_num,wealth,weights)
-
